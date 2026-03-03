@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Trắc nghiệm KHTN 9 - THCS Thuỷ Phương</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, query, getDocs, addDoc, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CẤU HÌNH FIREBASE CỦA BẠN ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4NJArIDAsEuqO5nLXpcIrmvyTF9bAUMg",
+            authDomain: "game-vat-ly-9.firebaseapp.com",
+            projectId: "game-vat-ly-9",
+            storageBucket: "game-vat-ly-9.firebasestorage.app",
+            messagingSenderId: "272270073188",
+            appId: "1:272270073188:web:ad4c66d49c9d4eaae52e71",
+            measurementId: "G-BLL94Y85W4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'game-vat-ly-9';
+
+        window.db = db;
+        window.auth = auth;
+        window.appId = appId;
+        window.fs = { collection, doc, setDoc, addDoc, deleteDoc, updateDoc, query, getDocs, serverTimestamp };
+
+        window.authPromise = new Promise((resolve) => {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    window.currentUser = user;
+                    resolve(user);
+                } else {
+                    signInAnonymously(auth).catch(e => console.error("Auth Fail"));
+                }
+            });
+        });
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Lexend', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.05); }
+        .btn-blue { background: #1e40af; color: white; transition: all 0.2s; }
+        .btn-blue:hover { background: #1e3a8a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2); }
+        .title-3d { font-weight: 900; color: #fbbf24; text-shadow: 2px 2px 0 #d97706; text-transform: uppercase; }
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; }
+        .gold-text { color: #d97706; font-weight: 800; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <div id="loading" class="loading-overlay">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-800 mb-2"></div>
+        <p class="text-sm font-bold text-blue-800" id="loading-text">Vui lòng chờ giây lát...</p>
+    </div>
+
+    <main id="app-container" class="w-full max-w-2xl flex-grow flex flex-col justify-center py-8">
+        
+        <!-- Screen 1: Login -->
+        <div id="screen-login" class="glass p-8 flex flex-col items-center space-y-6">
+            <div class="flex flex-col items-center">
+                <div class="w-20 h-20 mb-2">
+                    <svg viewBox="0 0 100 100" class="text-blue-800">
+                        <path fill="currentColor" d="M20 20h60v60H20z" opacity="0.1"/>
+                        <path fill="none" stroke="currentColor" stroke-width="4" d="M25 20h50a5 5 0 015 5v50a5 5 0 01-5 5H25a5 5 0 01-5-5V25a5 5 0 015-5z"/>
+                        <path fill="none" stroke="currentColor" stroke-width="2" d="M35 40h30M35 50h30M35 60h20"/>
+                        <path fill="currentColor" d="M70 10l15 15-40 40-10-10z"/>
+                    </svg>
+                </div>
+                <h1 class="title-3d text-3xl text-center">Định luật Ohm - Điện trở</h1>
+                <p class="text-[10px] uppercase tracking-widest font-bold text-gray-400 mt-1">Môi trường thi đấu: <span class="text-blue-700">THCS Thuỷ Phương</span></p>
+            </div>
+
+            <div class="w-full space-y-3">
+                <input type="text" id="inp-name" placeholder="Họ và tên học sinh" class="w-full p-4 rounded-xl border border-gray-200 outline-none focus:ring-2 ring-blue-800 bg-white">
+                <div class="flex gap-2">
+                    <input type="text" id="inp-sbd" placeholder="SBD" class="w-1/3 p-4 rounded-xl border border-gray-200 outline-none focus:ring-2 ring-blue-800 bg-white">
+                    <input type="text" id="inp-class" placeholder="Lớp (Ví dụ: 9/1)" class="w-2/3 p-4 rounded-xl border border-gray-200 outline-none focus:ring-2 ring-blue-800 bg-white">
+                </div>
+            </div>
+            
+            <button onclick="startGame()" class="w-full py-4 btn-blue rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] active:scale-95 transition-all">BẮT ĐẦU LÀM BÀI</button>
+            
+            <div class="pt-4 border-t w-full text-center">
+                <button onclick="openAdmin()" class="text-blue-800 font-bold text-xs opacity-60 hover:opacity-100 hover:underline">🔐 HỆ THỐNG QUẢN LÝ DÀNH CHO GIÁO VIÊN</button>
+            </div>
+        </div>
+
+        <!-- Screen 2: Quiz -->
+        <div id="screen-quiz" class="hidden glass p-6 space-y-4">
+            <div class="flex justify-between items-center text-[10px] font-bold text-blue-800 uppercase tracking-tighter">
+                <span id="quiz-index">CÂU 1/20</span>
+                <span id="quiz-timer" class="bg-blue-100 px-3 py-1 rounded-full border border-blue-200">120s</span>
+            </div>
+            <div id="quiz-content" class="min-h-[280px] py-4">
+                <p id="quiz-text" class="text-lg font-semibold leading-snug mb-6"></p>
+                <div id="quiz-options" class="grid gap-3"></div>
+                <div id="quiz-input-area" class="hidden">
+                    <p class="text-xs text-gray-400 mb-2 italic" id="quiz-input-hint"></p>
+                    <input type="text" id="inp-short-ans" class="w-full p-4 rounded-xl border-2 border-blue-50 outline-none focus:border-blue-800 bg-gray-50" placeholder="Nhập đáp án của bạn...">
+                </div>
+            </div>
+            <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+                <button onclick="prevQ()" id="btn-back" class="px-5 py-2 bg-gray-200 rounded-lg font-bold text-gray-500 hidden">LÙI LẠI</button>
+                <div class="flex-grow"></div>
+                <button onclick="nextQ()" id="btn-next" class="px-10 py-3 btn-blue rounded-xl font-bold shadow-md">TIẾP THEO</button>
+            </div>
+        </div>
+
+        <!-- Screen 3: Result -->
+        <div id="screen-result" class="hidden glass p-8 flex flex-col items-center space-y-6 text-center">
+            <h2 class="text-2xl font-black text-gray-800">KẾT QUẢ CUỐI CÙNG</h2>
+            <div class="relative">
+                <p id="res-score" class="text-8xl font-black text-blue-800">0.0</p>
+                <p id="res-rating" class="text-sm font-bold text-orange-500 uppercase -mt-2 tracking-widest">KHÁ</p>
+            </div>
+            <div class="w-full bg-yellow-50 p-4 rounded-2xl border-2 border-yellow-200">
+                <p class="text-[10px] text-yellow-600 font-bold uppercase tracking-widest mb-1">Xếp hạng toàn trường</p>
+                <p id="res-rank" class="text-4xl font-black text-yellow-800">#--</p>
+            </div>
+            <p id="res-msg" class="text-xs text-green-600 font-medium">Dữ liệu đã được lưu vào hệ thống.</p>
+            <div class="w-full flex flex-col gap-2">
+                <button onclick="location.reload()" class="w-full py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors tracking-wide">LÀM LẠI BÀI</button>
+                <button onclick="openLeaderboard()" class="w-full py-4 bg-blue-50 text-blue-800 font-bold rounded-xl hover:bg-blue-100 transition-colors">XẾP HẠNG TỔNG THỂ</button>
+            </div>
+        </div>
+
+        <!-- Screen 4: Admin Management -->
+        <div id="screen-admin" class="hidden glass p-6 w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-4 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📊</span>
+                    <h2 class="text-xl font-black text-blue-900">QUẢN TRỊ VIÊN</h2>
+                </div>
+                <button onclick="closeAdmin()" class="text-red-500 font-bold text-xl hover:bg-red-50 w-8 h-8 rounded-full flex items-center justify-center">✖</button>
+            </div>
+            <div id="admin-auth" class="py-12 flex flex-col items-center space-y-5">
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Nhập mã xác nhận</p>
+                <input type="password" id="admin-pass" placeholder="••••••••" class="p-4 border rounded-2xl outline-none text-center text-2xl tracking-[10px] focus:ring-2 ring-blue-300 w-48">
+                <button onclick="checkAdminPass()" class="px-10 py-3 btn-blue rounded-xl font-bold shadow-lg">XÁC NHẬN</button>
+            </div>
+            <div id="admin-panel" class="hidden flex-grow overflow-hidden flex flex-col">
+                <div class="mb-4 flex justify-between">
+                    <button onclick="loadAdminData()" class="px-4 py-2 bg-green-500 text-white text-[10px] font-bold rounded-lg shadow-sm hover:bg-green-600">LÀM MỚI DỮ LIỆU</button>
+                </div>
+                <div class="overflow-auto border border-gray-100 rounded-2xl shadow-inner bg-gray-50/50">
+                    <table class="w-full text-[11px] text-left">
+                        <thead class="bg-white sticky top-0 z-10">
+                            <tr class="text-blue-800 font-black">
+                                <th class="p-4">Hạng</th>
+                                <th class="p-4">Học sinh</th>
+                                <th class="p-4">Lớp</th>
+                                <th class="p-4 text-center">Điểm</th>
+                                <th class="p-4 text-center">Xử lý</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body" class="divide-y divide-gray-100 bg-white"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 5: Leaderboard -->
+        <div id="screen-leaderboard" class="hidden glass p-6 w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-4 mb-4">
+                <h2 class="text-xl font-black text-blue-900 tracking-tight">XẾP HẠNG TỔNG</h2>
+                <button onclick="document.getElementById('screen-leaderboard').classList.add('hidden'); document.getElementById('screen-result').classList.remove('hidden');" class="text-red-500 font-bold text-xl">✖</button>
+            </div>
+            <div class="overflow-auto border border-gray-100 rounded-2xl">
+                <table class="w-full text-[11px] text-left">
+                    <thead class="bg-blue-800 text-white">
+                        <tr>
+                            <th class="p-4">Học sinh</th>
+                            <th class="p-4">Lớp</th>
+                            <th class="p-4 text-center">Điểm</th>
+                            <th class="p-4 text-center">Hạng</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="text-center text-[9px] text-gray-400 mt-4 font-medium uppercase tracking-[2px]">
+        Bản quyền thuộc về Thạc sĩ Nguyễn Văn Cần, Thành phố Huế
+    </footer>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/70 hidden z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white p-7 rounded-[32px] w-full max-w-sm space-y-4 shadow-2xl">
+            <h3 class="font-bold text-blue-900 text-lg border-b pb-2">CHỈNH SỬA THÔNG TIN</h3>
+            <div class="space-y-4 pt-2">
+                <div class="space-y-1">
+                    <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Họ tên học sinh</label>
+                    <input type="text" id="edit-name" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:ring-2 ring-blue-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] text-gray-400 font-bold uppercase ml-1">Lớp</label>
+                    <input type="text" id="edit-class" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:ring-2 ring-blue-500">
+                </div>
+            </div>
+            <div class="flex gap-2 pt-4">
+                <button onclick="closeEditModal()" class="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-bold">HỦY</button>
+                <button onclick="saveEdit()" class="flex-1 py-3 btn-blue rounded-xl font-bold">LƯU THAY ĐỔI</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- DATABASE ---
+    const BANK = {
+        p1: [
+            { q: "Hệ thức của định luật Ohm là gì?", a: ["$I = U/R$", "$I = R/U$", "$U = I/R$", "$R = U \\cdot I$"], c: 0 },
+            { q: "Đơn vị đo của điện trở là gì?", a: ["ohm ($\\Omega$)", "ampe (A)", "vôn (V)", "oát (W)"], c: 0 },
+            { q: "Khi tăng hiệu điện thế lên 2 lần thì cường độ dòng điện sẽ", a: ["tăng 2 lần.", "giảm 2 lần.", "không đổi.", "tăng 4 lần."], c: 0 },
+            { q: "Dụng cụ dùng để đo cường độ dòng điện là gì?", a: ["Ampe kế.", "Vôn kế.", "Ôm kế.", "Lực kế."], c: 0 },
+            { q: "Để đo hiệu điện thế ta dùng dụng cụ nào?", a: ["Vôn kế.", "Ampe kế.", "Công tơ điện.", "Tốc kế."], c: 0 },
+            { q: "Điện trở của một dây dẫn đặc trưng cho mức độ", a: ["cản trở dòng điện.", "dẫn điện mạnh.", "chịu nhiệt tốt.", "giữ hiệu điện thế."], c: 0 },
+            { q: "Công thức điện trở dây dẫn là", a: ["$R = \\rho \\cdot l/S$", "$R = \\rho \\cdot S/l$", "$R = l/(\\rho \\cdot S)$", "$R = \\rho \\cdot l \\cdot S$"], c: 0 },
+            { q: "Vật liệu dẫn điện tốt nhất trong các chất sau là", a: ["Bạc.", "Đồng.", "Nhôm.", "Sắt."], c: 0 },
+            { q: "Nếu R tăng 3 lần, U không đổi thì I sẽ", a: ["giảm 3 lần.", "tăng 3 lần.", "giảm 9 lần.", "không đổi."], c: 0 },
+            { q: "Đơn vị 1 Vôn / 1 Ampe tương đương với", a: ["1 Ohm.", "1 Oát.", "1 Jun.", "1 Tesla."], c: 0 },
+            { q: "Biến trở dùng để điều chỉnh đại lượng nào?", a: ["Cường độ dòng điện.", "Hiệu điện thế nguồn.", "Chiều dài dây dẫn.", "Điện trở suất."], c: 0 },
+            { q: "Đồ thị I-U của một vật dẫn là một đường", a: ["thẳng qua gốc tọa độ.", "cong hướng lên.", "tròn tâm O.", "thẳng song song trục U."], c: 0 },
+            { q: "Ampe kế được mắc như thế nào trong mạch?", a: ["Nối tiếp với vật cần đo.", "Song song với vật cần đo.", "Mắc vào nguồn điện.", "Mắc tùy ý."], c: 0 },
+            { q: "Nếu giảm chiều dài dây dẫn đi 2 lần thì R sẽ", a: ["giảm 2 lần.", "tăng 2 lần.", "không đổi.", "giảm 4 lần."], c: 0 },
+            { q: "Khi $U = 12V$ và $I = 3A$ thì điện trở bằng", a: ["$4 \\Omega$.", "$36 \\Omega$.", "$0,25 \\Omega$.", "$9 \\Omega$."], c: 0 },
+            { q: "Kí hiệu điện trở suất là", a: ["$\\rho$.", "R.", "S.", "l."], c: 0 },
+            { q: "Thiết bị bảo vệ mạch điện khi quá tải là", a: ["Cầu chì.", "Công tắc.", "Biến trở.", "Vôn kế."], c: 0 },
+            { q: "Cơ thể người khi tay ướt có điện trở", a: ["giảm xuống.", "tăng lên.", "không đổi.", "bằng vô cùng."], c: 0 },
+            { q: "Vôn kế có điện trở như thế nào?", a: ["Rất lớn.", "Rất nhỏ.", "Bằng ampe kế.", "Bằng 0."], c: 0 },
+            { q: "Khi $U=0$ thì cường độ dòng điện bằng", a: ["0.", "Vô cùng.", "Một hằng số.", "Bằng R."], c: 0 },
+            { q: "Đơn vị đo điện năng tiêu thụ là", a: ["kWh.", "Ampe.", "Vôn.", "Ohm."], c: 0 },
+            { q: "Bản chất của dòng điện trong kim loại là dòng các", a: ["electron tự do.", "ion dương.", "ion âm.", "nguyên tử."], c: 0 },
+            { q: "Công thức tính nhiệt lượng tỏa ra trên R là", a: ["$Q = I^2Rt$", "$Q = IRt$", "$Q = U^2Rt$", "$Q = UIt^2$"], c: 0 },
+            { q: "Khi mắc vôn kế, chốt dương (+) nối với", a: ["phía cực dương nguồn.", "phía cực âm nguồn.", "vị trí bất kì.", "nối trực tiếp đất."], c: 0 }
+        ],
+        p2: [
+            { ctx: "Khảo sát dây dẫn đồng. Khi $U=10V$ thì $I=0,5A$. Chọn đúng/sai.", items: [{t: "Điện trở dây là $20 \\Omega$.", c: true}, {t: "Nếu $U=20V$ thì $I=1A$.", c: true}, {t: "Điện trở tỉ lệ nghịch với I.", c: false}, {t: "Đồ thị I-U qua điểm O(0,0).", c: true}] },
+            { ctx: "Mắc thiết bị điện gia đình. Chọn đúng/sai.", items: [{t: "Đèn và quạt mắc song song.", c: true}, {t: "Cầu chì mắc nối tiếp với mạch.", c: true}, {t: "Nên dùng dây sắt làm cầu chì.", c: false}, {t: "Tắt điện khi ra khỏi phòng.", c: true}] },
+            { ctx: "Hai điện trở $R_1=5\\Omega, R_2=10\\Omega$ mắc nối tiếp. Chọn đúng/sai.", items: [{t: "R tương đương là $15\\Omega$.", c: true}, {t: "I qua $R_1$ lớn hơn qua $R_2$.", c: false}, {t: "U trên $R_2$ lớn gấp đôi $R_1$.", c: true}, {t: "Nếu mắc song song, $R_{td} < 5\\Omega$.", c: true}] },
+            { ctx: "Biến trở con chạy trong mạch điện. Chọn đúng/sai.", items: [{t: "Thay đổi được trị số điện trở.", c: true}, {t: "Mắc nối tiếp trong mạch chính.", c: true}, {t: "Hoạt động nhờ thay đổi tiết diện.", c: false}, {t: "Làm thay đổi cường độ dòng điện.", c: true}] },
+            { ctx: "Vật liệu và điện trở suất. Chọn đúng/sai.", items: [{t: "Bạc dẫn điện tốt hơn đồng.", c: true}, {t: "Điện trở suất kí hiệu là $\\rho$.", c: true}, {t: "Nhựa là chất dẫn điện tốt.", c: false}, {t: "Đơn vị $\\rho$ là $\\Omega \\cdot m$.", c: true}] },
+            { ctx: "Sử dụng các dụng cụ đo điện. Chọn đúng/sai.", items: [{t: "Vôn kế đo hiệu điện thế.", c: true}, {t: "Ampe kế đo cường độ dòng điện.", c: true}, {t: "Vôn kế có điện trở rất nhỏ.", c: false}, {t: "Mắc ngược cực sẽ hỏng máy.", c: true}] },
+            { ctx: "Đoạn mạch có R xác định. Chọn đúng/sai.", items: [{t: "I tỉ lệ thuận với U.", c: true}, {t: "R phụ thuộc vào hiệu điện thế.", c: false}, {t: "U tăng 3 lần thì I tăng 3 lần.", c: true}, {t: "Đồ thị I-U là đường cong.", c: false}] },
+            { ctx: "An toàn khi sử dụng điện. Chọn đúng/sai.", items: [{t: "Không chạm vào dây điện hở.", c: true}, {t: "Tay ướt chạm phích cắm là an toàn.", c: false}, {t: "Ngắt điện khi có cháy nổ.", c: true}, {t: "Dùng cầu chì đúng định mức.", c: true}] }
+        ],
+        p3: [
+            { q: "Cho $U = 24V, R = 12\\Omega$. Tính I (Ampe).", ans: "2" },
+            { q: "Mạch có $I = 0,5A, R = 40\\Omega$. Tính U (Vôn).", ans: "20" },
+            { q: "Điện trở $R_1=10\\Omega, R_2=15\\Omega$ mắc song song. Tính R tương đương (Ohm).", ans: "6" },
+            { q: "Nhận định về điện trở R:\n1. R đặc trưng cho tính cản trở dòng điện.\n2. R đo bằng Ampe.\n3. R không phụ thuộc vào U.\n4. R đơn vị là Ohm.\nChọn các ý đúng (dãy số tăng dần).", ans: "134" },
+            { q: "Các yếu tố ảnh hưởng R:\n1. Chiều dài dây.\n2. Tiết diện dây.\n3. Màu sắc vỏ dây.\n4. Vật liệu làm dây.\nChọn các ý đúng (dãy số tăng dần).", ans: "124" },
+            { q: "Đặc điểm dụng cụ đo:\n1. Ampe kế mắc nối tiếp.\n2. Vôn kế mắc song song.\n3. Vôn kế có R rất lớn.\n4. Ampe kế có R rất lớn.\nChọn các ý đúng (dãy số tăng dần).", ans: "123" },
+            { q: "Quy tắc an toàn điện:\n1. Tắt nguồn khi sửa chữa.\n2. Tránh xa dây cao thế.\n3. Dùng dây đồng thay cầu chì.\n4. Kiểm tra cách điện dây dẫn.\nChọn các ý đúng (dãy số tăng dần).", ans: "124" },
+            { q: "Tính chất định luật Ohm:\n1. I tỉ lệ thuận với U.\n2. I tỉ lệ nghịch với R.\n3. U tỉ lệ thuận với R.\n4. R tỉ lệ thuận với I.\nChọn các ý đúng (dãy số tăng dần).", ans: "12" }
+        ]
+    };
+
+    let user = { name: "", sbd: "", class: "", school: "THCS Thuỷ Phương" }; // Cố định trường
+    let deck = [], curIdx = 0, userAns = [], timer, timeVal = 0, adminData = [], editingId = null;
+
+    function toggleLoading(show, text = "Đang tải dữ liệu...") { 
+        document.getElementById('loading-text').innerText = text;
+        document.getElementById('loading').style.display = show ? 'flex' : 'none'; 
+    }
+
+    async function startGame() {
+        const n = document.getElementById('inp-name').value.trim();
+        const s = document.getElementById('inp-sbd').value.trim();
+        const c = document.getElementById('inp-class').value.trim();
+        if(!n || !s || !c) return alert("Vui lòng nhập đầy đủ thông tin: Họ tên, SBD và Lớp!");
+        
+        user.name = n; user.sbd = s; user.class = c;
+
+        const p1 = [...BANK.p1].sort(() => 0.5 - Math.random()).slice(0, 12).map(i => ({...i, type: 1}));
+        const p2 = [...BANK.p2].sort(() => 0.5 - Math.random()).slice(0, 4).map(i => ({...i, type: 2}));
+        const p3 = [...BANK.p3].sort(() => 0.5 - Math.random()).slice(0, 4).map(i => ({...i, type: 3}));
+        deck = [...p1, ...p2, ...p3];
+        userAns = deck.map(() => null);
+        curIdx = 0;
+        document.getElementById('screen-login').classList.add('hidden');
+        document.getElementById('screen-quiz').classList.remove('hidden');
+        showQ();
+    }
+
+    function showQ() {
+        const q = deck[curIdx];
+        if(!q) return;
+        document.getElementById('quiz-index').innerText = `Câu ${curIdx + 1}/20`;
+        document.getElementById('quiz-text').innerText = q.q || q.ctx;
+        const opts = document.getElementById('quiz-options'), inpArea = document.getElementById('quiz-input-area');
+        opts.innerHTML = ""; inpArea.classList.add('hidden');
+        document.getElementById('btn-back').classList.toggle('hidden', curIdx === 0);
+        document.getElementById('btn-next').innerText = curIdx === 19 ? "NỘP BÀI" : "TIẾP THEO";
+
+        if(q.type === 1) {
+            q.a.forEach((o, i) => {
+                const b = document.createElement('button');
+                b.className = `p-4 rounded-xl border text-left flex gap-3 transition-all ${userAns[curIdx] === i ? 'bg-blue-800 text-white shadow-lg' : 'bg-white hover:bg-blue-50'}`;
+                b.innerHTML = `<span class='font-bold opacity-30'>${String.fromCharCode(65+i)}.</span> <span>${o}</span>`;
+                b.onclick = () => { userAns[curIdx] = i; showQ(); };
+                opts.appendChild(b);
+            });
+        } else if(q.type === 2) {
+            q.items.forEach((it, i) => {
+                const row = document.createElement('div');
+                row.className = "p-3 bg-gray-50 rounded-lg flex flex-col gap-2 border shadow-sm";
+                row.innerHTML = `<p class='text-[13px] font-medium leading-relaxed'>${String.fromCharCode(97+i)}) ${it.t}</p>
+                    <div class='flex justify-end gap-2'>
+                        <button class='px-4 py-1 rounded text-[10px] font-bold ${userAns[curIdx]?.[i] === true ? 'bg-blue-800 text-white' : 'bg-white border'}' onclick='setTF(${i}, true)'>ĐÚNG</button>
+                        <button class='px-4 py-1 rounded text-[10px] font-bold ${userAns[curIdx]?.[i] === false ? 'bg-red-600 text-white' : 'bg-white border'}' onclick='setTF(${i}, false)'>SAI</button>
+                    </div>`;
+                opts.appendChild(row);
+            });
+        } else {
+            inpArea.classList.remove('hidden');
+            document.getElementById('quiz-input-hint').innerText = q.ans.length > 2 ? "Chọn các ý đúng (ghi dãy số tăng dần)." : "Nhập giá trị số.";
+            const inp = document.getElementById('inp-short-ans');
+            inp.value = userAns[curIdx] || "";
+            inp.oninput = (e) => userAns[curIdx] = e.target.value;
+        }
+        clearInterval(timer); timeVal = q.type === 1 ? 90 : 120; startTimer();
+        if(window.MathJax) MathJax.typesetPromise();
+    }
+
+    function setTF(s, v) { if(!userAns[curIdx]) userAns[curIdx] = {}; userAns[curIdx][s] = v; showQ(); }
+    function startTimer() {
+        const el = document.getElementById('quiz-timer');
+        el.innerText = timeVal + "s";
+        timer = setInterval(() => { timeVal--; el.innerText = timeVal + "s"; if(timeVal <= 0) { clearInterval(timer); nextQ(); } }, 1000);
+    }
+    function nextQ() { if(curIdx < 19) { curIdx++; showQ(); } else finish(); }
+    function prevQ() { if(curIdx > 0) { curIdx--; showQ(); } }
+
+    async function finish() {
+        clearInterval(timer);
+        toggleLoading(true, "Đang tính toán thứ hạng...");
+        
+        let p1=0, p2=0, p3=0;
+        deck.forEach((q, i) => {
+            const a = userAns[i];
+            if(q.type === 1 && a === q.c) p1 += 0.25;
+            if(q.type === 2 && a) {
+                let h = 0; for(let j=0; j<4; j++) if(a[j] === q.items[j].c) h++;
+                p2 += (h===1?0.0625 : (h===2?0.125 : (h===3?0.25 : (h===4?0.5 : 0))));
+            }
+            if(q.type === 3 && a?.trim() === q.ans) p3 += 0.5;
+        });
+        const totalScore = parseFloat((p1 + p2 + p3).toFixed(1));
+        document.getElementById('res-score').innerText = totalScore;
+        let rate = totalScore >= 6 ? "XUẤT SẮC" : (totalScore >= 5 ? "GIỎI" : (totalScore >= 4 ? "KHÁ" : (totalScore >= 3 ? "ĐẠT" : "CHƯA ĐẠT")));
+        document.getElementById('res-rating').innerText = rate;
+
+        const uReady = await window.authPromise;
+        try {
+            if (uReady) {
+                const colRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'scores');
+                await window.fs.addDoc(colRef, { ...user, score: totalScore, rating: rate, timestamp: window.fs.serverTimestamp() });
+
+                const snap = await window.fs.getDocs(window.fs.query(colRef));
+                const allScores = snap.docs.map(d => parseFloat(d.data().score));
+                allScores.sort((a, b) => b - a);
+                const rank = allScores.indexOf(totalScore) + 1;
+                document.getElementById('res-rank').innerText = `#${rank} / ${allScores.length}`;
+            }
+        } finally { toggleLoading(false); document.getElementById('screen-quiz').classList.add('hidden'); document.getElementById('screen-result').classList.remove('hidden'); }
+    }
+
+    // --- ADMIN & LEADERBOARD ---
+    function openAdmin() { document.getElementById('screen-login').classList.add('hidden'); document.getElementById('screen-admin').classList.remove('hidden'); }
+    function closeAdmin() { document.getElementById('screen-admin').classList.add('hidden'); document.getElementById('screen-login').classList.remove('hidden'); }
+    function checkAdminPass() { if(document.getElementById('admin-pass').value === "admin123") { document.getElementById('admin-auth').classList.add('hidden'); document.getElementById('admin-panel').classList.remove('hidden'); loadAdminData(); } else alert("Mật khẩu sai!"); }
+    
+    async function loadAdminData() {
+        toggleLoading(true); const tbody = document.getElementById('admin-table-body'); tbody.innerHTML = "";
+        try {
+            await window.authPromise;
+            const snap = await window.fs.getDocs(window.fs.query(window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'scores')));
+            adminData = []; snap.forEach(d => adminData.push({ id: d.id, ...d.data() }));
+            
+            const sortedByScore = [...adminData].sort((a, b) => b.score - a.score);
+            adminData.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+            adminData.forEach((it, idx) => {
+                const rank = sortedByScore.findIndex(s => s.score === it.score) + 1;
+                tbody.innerHTML += `<tr>
+                    <td class="p-4 font-black text-blue-800">#${rank}</td>
+                    <td class="p-4"><div class="font-bold text-gray-800">${it.name}</div><div class="text-[9px] text-gray-400">SBD: ${it.sbd}</div></td>
+                    <td class="p-4 font-medium text-gray-600">${it.class || ''}</td>
+                    <td class="p-4 text-center font-black text-gray-800">${it.score}</td>
+                    <td class="p-4 text-center">
+                        <div class="flex gap-2 justify-center">
+                            <button onclick="editItem(${adminData.indexOf(it)})" class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-800 rounded-lg">✎</button> 
+                            <button onclick="deleteItem('${it.id}')" class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 rounded-lg">🗑</button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+        } finally { toggleLoading(false); }
+    }
+
+    window.deleteItem = async function(id) {
+        if(!confirm("Xoá kết quả thi này?")) return;
+        toggleLoading(true);
+        try { await window.fs.deleteDoc(window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'scores', id)); loadAdminData(); } catch(e) { alert("Lỗi!"); } finally { toggleLoading(false); }
+    }
+    
+    function editItem(idx) { const it = adminData[idx]; editingId = it.id; document.getElementById('edit-name').value = it.name; document.getElementById('edit-class').value = it.class || ""; document.getElementById('edit-modal').classList.remove('hidden'); }
+    function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
+    async function saveEdit() {
+        if(!editingId) return; toggleLoading(true);
+        try { await window.fs.updateDoc(window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'scores', editingId), { name: document.getElementById('edit-name').value.trim(), class: document.getElementById('edit-class').value.trim() }); closeEditModal(); loadAdminData(); } catch(e) { alert("Lỗi!"); } finally { toggleLoading(false); }
+    }
+
+    async function openLeaderboard() {
+        toggleLoading(true); const tbody = document.getElementById('leaderboard-body'); tbody.innerHTML = "";
+        try {
+            await window.authPromise;
+            const snap = await window.fs.getDocs(window.fs.query(window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'scores')));
+            const data = snap.docs.map(d => d.data());
+            data.sort((a,b) => b.score - a.score);
+            data.forEach((it, i) => { 
+                tbody.innerHTML += `<tr class='${i<3?"bg-blue-50/50":""}'>
+                    <td class="p-4 font-bold text-blue-900">${it.name}</td>
+                    <td class="p-4 font-medium text-gray-500">${it.class || ''}</td>
+                    <td class="p-4 text-center font-black text-blue-800">${it.score}</td>
+                    <td class="p-4 text-center font-black text-orange-500">#${i+1}</td>
+                </tr>`; 
+            });
+            document.getElementById('screen-result').classList.add('hidden'); document.getElementById('screen-leaderboard').classList.remove('hidden');
+        } finally { toggleLoading(false); }
+    }
+</script>
+</body>
+</html>
